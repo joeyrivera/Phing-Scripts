@@ -1,0 +1,58 @@
+<?xml version="1.0" ?>  
+<project name="SetupSite" basedir="." default="build">  
+  
+    <!-- Load our configuration -->  
+    <property file="build.properties" />  
+ 
+	<target name="clean" description="clean up dir">
+		<echo msg="Cleaning dir" />
+		<delete dir="${dirs.site}" includeemptydirs="true" verbose="false" failonerror="true" />
+		<delete dir="${dirs.temp}" includeemptydirs="true" verbose="false" failonerror="true" />
+	</target>
+	
+	<target name="prepare" description="create dir" depends="clean">
+		<echo msg="Creating new dir" />
+		<mkdir dir="${dirs.site}" />
+		<mkdir dir="${dirs.temp}" />
+	</target>
+	
+	<target name="svn" description="create local repo" depends="prepare">
+		<echo msg="Exporting svn site" />
+		<svnexport
+		   svnpath="${svn.path}"
+		   username="${svn.user}"
+		   password="${svn.pass}"
+		   force="true"
+		   nocache="true"
+		   repositoryurl="${svn.repo}"
+		   todir="${dirs.site}"/>
+	</target>
+
+	<target name="db" description="setting up db" depends="svn">
+		<exec  
+            command="${progs.pgsql} -q -h ${db.host} -U ${db.user} ${db.name} &lt; ${db.structure}"  
+            checkreturn="true" />
+	</target>
+	
+	<!--<target name="dbdata" description="copy db data">
+		<exec  
+            command="${progs.pgsql} -q -h ${db.host} -U ${db.user} ${db.name} &lt; ${db.data}"  
+            checkreturn="true" />
+	</target>-->
+	
+	<!-- Run tests -->
+	<target name="test" description="run tests" depends="db">
+		<phpunit bootstrap="./site/tests/bootstrap.php" haltonfailure="true" haltonerror="true" printsummary="true">
+		  <formatter todir="." type="xml"/>
+		  <batchtest>
+			<fileset dir="${dirs.tests}">
+			  <include name="**/*Test*.php"/>
+			  <exclude name="**/Controller*.php"/>
+			</fileset>
+		  </batchtest>
+		</phpunit>
+	</target>
+	
+	<target name="build" depends="test">
+	</target>
+</project>  
